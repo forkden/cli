@@ -1,0 +1,5 @@
+Forkden CLI
+Copyright 2026 Forkden
+
+The CLI and public API contract are licensed under the Apache License, Version 2.0.
+The separate Forkden engine implementation is not part of this distribution.
