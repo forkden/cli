@@ -26,6 +26,8 @@ func dispatch(ctx context.Context, client engine, args []string, out io.Writer) 
 		return profileCommand(ctx, client, args[1:], out)
 	case "fork":
 		return forkCommand(ctx, client, args[1:], out)
+	case "clone":
+		return cloneCommand(ctx, client, args[1:], out)
 	case "query", "check", "history", "diff", "export":
 		return workspaceCommand(ctx, client, args, out)
 	case "engine":
@@ -107,15 +109,23 @@ func forkCommand(ctx context.Context, client engine, args []string, out io.Write
 	case "create":
 		flags := commandFlags("fork create")
 		source := flags.String("source", "", "registered source profile")
-		target := flags.String("target_env", "FORKDEN_TARGET_URL", "dedicated target administrator URL env on engine")
+		clone := flags.String("clone", "", "reusable clone name or ID")
+		version := flags.Int("version", 0, "clone snapshot version; omitted means latest ready version")
+		target := flags.String("target_env", "", "target URL env for --source; defaults to FORKDEN_TARGET_URL")
 		ttl := flags.Duration("ttl", time.Hour, "fork lifetime, whole seconds from 1s to 24h")
 		if err := parse(flags, args[1:], out); err != nil {
 			return nil, err
 		}
-		if *source == "" || *ttl < time.Second || *ttl > 24*time.Hour || *ttl%time.Second != 0 {
-			return nil, invalidInput("--source and a whole-second ttl between 1s and 24h are required")
+		if (*source == "") == (*clone == "") || *ttl < time.Second || *ttl > 24*time.Hour || *ttl%time.Second != 0 {
+			return nil, invalidInput("provide exactly one of --source or --clone and a whole-second ttl between 1s and 24h")
 		}
-		return execute(ctx, client, v1.ForkCreate, v1.CreateInput{Source: *source, TargetEnv: *target, TTLSeconds: int64(*ttl / time.Second)})
+		if *version < 0 || (*source != "" && *version != 0) || (*clone != "" && *target != "") {
+			return nil, invalidInput("--version requires --clone; --target_env applies only to --source")
+		}
+		if *source != "" && *target == "" {
+			*target = "FORKDEN_TARGET_URL"
+		}
+		return execute(ctx, client, v1.ForkCreate, v1.CreateInput{Source: *source, Clone: *clone, Version: *version, TargetEnv: *target, TTLSeconds: int64(*ttl / time.Second)})
 	default:
 		return nil, invalidInput("unknown fork command")
 	}

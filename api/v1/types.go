@@ -23,6 +23,12 @@ const (
 	ProfileCheck  Action = "profile.check"
 	ProfileUpdate Action = "profile.update"
 	ProfileRemove Action = "profile.remove"
+	CloneCreate   Action = "clone.create"
+	CloneList     Action = "clone.list"
+	CloneShow     Action = "clone.show"
+	CloneRefresh  Action = "clone.refresh"
+	CloneRemove   Action = "clone.remove"
+	ClonePrune    Action = "clone.prune"
 	ForkCreate    Action = "fork.create"
 	ForkList      Action = "fork.list"
 	ForkClose     Action = "fork.close"
@@ -71,9 +77,23 @@ type ProfileName struct {
 
 // CreateInput requests an isolated fork. TTLSeconds must be between 1 and 86400.
 type CreateInput struct {
-	Source     string `json:"source"`
-	TargetEnv  string `json:"target_env"`
+	Source     string `json:"source,omitempty"`
+	Clone      string `json:"clone,omitempty"`
+	Version    int    `json:"version,omitempty"`
+	TargetEnv  string `json:"target_env,omitempty"`
 	TTLSeconds int64  `json:"ttl_seconds"`
+}
+
+// CloneInput requests a named snapshot using an engine-side source and target reference.
+type CloneInput struct {
+	Name      string `json:"name"`
+	Source    string `json:"source"`
+	TargetEnv string `json:"target_env"`
+}
+
+// CloneRef identifies a clone by its stable ID or unique live name.
+type CloneRef struct {
+	Clone string `json:"clone"`
 }
 
 // ForkID identifies one engine-owned fork.

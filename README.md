@@ -9,7 +9,7 @@ Open-source command-line client for the private Forkden engine. Licensed under A
 Requires Go 1.26 or newer:
 
 ```sh
-go install github.com/forkden/cli/cmd/forkden@v0.1.0
+go install github.com/forkden/cli/cmd/forkden@v0.2.0
 forkden version
 forkden help
 ```
@@ -50,7 +50,25 @@ forkden export --fork fd_REPLACE_WITH_ID --output ./new-review-directory
 forkden fork close fd_REPLACE_WITH_ID
 ```
 
-Profiles also support `db update NAME --url_env ENV` and `db remove NAME`. `source` is an alias for `db`. The engine verifies the recorded cluster/database and protects profiles with unclosed forks. `fork prune` closes expired or interrupted forks.
+Profiles also support `db update NAME --url_env ENV` and `db remove NAME`. `source` is an alias for `db`. The engine verifies the recorded cluster/database and protects profiles with unclosed forks or non-removed clones. `fork prune` closes expired or interrupted forks.
+
+## Reusable clones and versions
+
+With an engine advertising `clones.v1` in `engine status`:
+
+```sh
+forkden clone create commerce --source sample
+forkden clone show commerce
+forkden fork create --clone commerce --version 1 --ttl 1h
+forkden clone refresh commerce
+forkden fork create --clone commerce --ttl 1h
+```
+
+Capture reads the source once into an immutable snapshot on the dedicated target. A fork copies the selected ready version without resolving the source credentials. Omitting `--version` (or using `0`) selects the latest ready version at creation time. Refresh publishes a new version; existing forks keep their original version. A clone pins its target, so `--target_env` is accepted on `clone create`, not on `fork create --clone`. `--source` and `--clone` are mutually exclusive. The original direct `--source` workflow remains supported.
+
+`clone list/show` read lifecycle metadata without a DB connection. Close all dependent forks, including expired ones, before `clone remove NAME_OR_ID`. Removal keeps a metadata tombstone; repeat removal uses its ID. `clone prune` recovers interrupted captures/removals and never deletes ready versions. No automatic janitor or version-retention policy is implemented. After a timeout inspect `clone show`, `fork list` and cleanup state before retrying.
+
+The prototype uses a full PostgreSQL database copy, without copy-on-write or an instant-branching promise. Clone output excludes snapshot rows, internal DB/owner identities, connection references and cluster fingerprints. This local engine protocol does not upload metadata or SQL to a platform.
 
 The engine owns SQL validation, permissions, TTL and audit. The CLI only reads the selected SQL file, sends commands and writes export artifacts locally. Export refuses existing directories and writes files with mode `0600`. SQL and report data can be sensitive even though connection credentials are excluded.
 

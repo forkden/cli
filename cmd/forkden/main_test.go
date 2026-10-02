@@ -15,10 +15,13 @@ type fakeEngine struct {
 	response v1.Response
 	err      error
 	calls    int
+	action   v1.Action
+	input    any
 }
 
-func (f *fakeEngine) Execute(context.Context, v1.Action, any) (v1.Response, error) {
+func (f *fakeEngine) Execute(_ context.Context, action v1.Action, input any) (v1.Response, error) {
 	f.calls++
+	f.action, f.input = action, input
 	return f.response, f.err
 }
 
@@ -26,7 +29,7 @@ func (f *fakeEngine) Status(context.Context) (v1.Response, error) { return f.res
 
 func TestHelpAndVersionWorkWithoutEngine(t *testing.T) {
 	t.Parallel()
-	for _, args := range [][]string{{"--socket", "/missing/engine.sock", "help"}, {"--socket", "/missing/engine.sock", "db", "help"}, {"--json", "version"}} {
+	for _, args := range [][]string{{"--socket", "/missing/engine.sock", "help"}, {"--socket", "/missing/engine.sock", "db", "help"}, {"--socket", "/missing/engine.sock", "clone", "help"}, {"--json", "version"}} {
 		var out bytes.Buffer
 		if err := run(t.Context(), args, &out); err != nil || out.Len() == 0 {
 			t.Errorf("run(%v) = %q, %v; want offline help/version", args, out.String(), err)

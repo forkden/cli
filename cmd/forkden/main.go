@@ -52,6 +52,10 @@ func run(ctx context.Context, args []string, out io.Writer) error {
 		_, err := fmt.Fprint(out, profileUsage)
 		return err
 	}
+	if args[0] == "clone" && (len(args) == 1 || args[1] == "help" || args[1] == "--help") {
+		_, err := fmt.Fprint(out, cloneUsage)
+		return err
+	}
 	if *socket == "" {
 		home := os.Getenv("FORKDEN_HOME")
 		if home == "" {
@@ -124,6 +128,11 @@ Usage: forkden [--json] [--socket PATH] COMMAND
   db check NAME                         Verify connection and pinned database
   db update NAME --url_env ENV           Rotate the reference for the same DB
   db remove NAME                        Remove a profile after closing its forks
+  clone create NAME --source PROFILE     Capture immutable snapshot v1
+  clone list / clone show NAME_OR_ID
+  clone refresh / clone remove NAME_OR_ID
+  clone prune                           Recover interrupted snapshot cleanup
+  fork create --clone NAME [--version N] Fork a fixed snapshot without reading source
   fork create --source NAME [--ttl 1h]   Create an isolated database fork
   fork list / fork close ID / fork prune
   query --fork ID --file FILE            Run one SQL statement on the fork
