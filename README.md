@@ -4,6 +4,8 @@ Open-source command-line client for the private Forkden engine. Licensed under A
 
 **Status:** local prototype, macOS/Linux, engine protocol v1. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. A separately running engine is required for database operations. Engine distribution and cloud account login are not available publicly yet.
 
+**Product direction (2026-10-02):** one small Apache-2.0 CLI will call the Forkden Cloud API for both **self-hosted** customer data planes and **managed cloud** Forkden data planes. Private DB execution stays in the chosen deployment infrastructure. Version 0.2.0 below is the existing Unix-socket development prototype; cloud login/client and deployment jobs are not implemented in this release. [Deployment architecture](https://github.com/forkden/prd/blob/main/docs/08-deployment-architecture.md).
+
 ## Install or build
 
 Requires Go 1.26 or newer:
