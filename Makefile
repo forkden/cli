@@ -10,4 +10,4 @@ lint:
 	golangci-lint run ./...
 
 fmt:
-	gofmt -w cmd api
+	gofmt -w cmd api internal

@@ -1,14 +1,18 @@
 # Forkden CLI
 
-Open-source command-line client for the private Forkden engine. Licensed under Apache-2.0.
+Open-source command-line client for Forkden accounts and private data-plane copy jobs. Licensed under Apache-2.0.
 
-**Status:** local prototype, macOS/Linux, engine protocol v1. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. A separately running engine is required for database operations. Engine distribution and cloud account login are not available publicly yet.
+**Working tree:** `0.3.0-dev` adds browser-approved account login/logout, workspace selection, metadata profiles, clone/fork creation jobs and status/wait/cancel commands. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. These changes are not released yet; the published `v0.2.0` is the local Unix-socket prototype. Hosted service deployment and private worker distribution remain pending.
 
-**Product direction (2026-10-02):** one small Apache-2.0 CLI will call the Forkden Cloud API for both **self-hosted** customer data planes and **managed cloud** Forkden data planes. Private DB execution stays in the chosen deployment infrastructure. Version 0.2.0 below is the existing Unix-socket development prototype; cloud login/client and deployment jobs are not implemented in this release. [Deployment architecture](https://github.com/forkden/prd/blob/main/docs/08-deployment-architecture.md).
+**Product direction:** one small Apache-2.0 CLI calls the account API for both **self-hosted** customer data planes and future **managed cloud** Forkden data planes. Private DB execution stays in the selected infrastructure. The `cloud` prefix explicitly uses the account API; existing local commands retain their Unix-socket development transport. [Deployment architecture](https://github.com/forkden/prd/blob/main/docs/08-deployment-architecture.md).
+
+## Account and copy jobs
+
+Build this working tree with `make build` and use `./bin/forkden`. Start with `./bin/forkden --api_url http://127.0.0.1:8080 login` against the configured local backend/portal. Enter the terminal code at `/device`, sign in with GitHub and review/approve the CLI's access. Tokens stay in the OS keyring; settings store the pinned origin and opaque references only. `logout` revokes the token. See [the cloud workflow and contract](docs/cloud-client.md) for workspace selection, clone/fork creation, polling, retries, limits and deployment prerequisites.
 
 ## Install or build
 
-Requires Go 1.26 or newer:
+Requires Go 1.26 or newer. The published local prototype can be installed with:
 
 ```sh
 go install github.com/forkden/cli/cmd/forkden@v0.2.0
@@ -20,7 +24,7 @@ Or clone this repository and run `make build`. Help and version work without an 
 
 ## Connect to an engine
 
-The engine serves HTTP API v1 over a local Unix socket. The socket is mode `0600` in the engine's `0700` registry directory. Access is controlled by the local OS user; this is not cloud account authentication. The CLI has no TCP/remote endpoint setting and does not use HTTP proxies or follow redirects.
+The engine serves HTTP API v1 over a local Unix socket. The socket is mode `0600` in the engine's `0700` registry directory. Access is controlled by the local OS user. This transport is separate from cloud account authentication and does not use HTTP proxies or follow redirects. The account HTTP client honors standard HTTP proxy settings and refuses redirects.
 
 ```sh
 export FORKDEN_ENGINE_SOCKET=/absolute/path/to/engine-state/engine.sock
