@@ -18,7 +18,7 @@ import (
 	v1 "github.com/forkden/cli/api/v1"
 )
 
-var version = "0.3.0-dev"
+var version = "0.4.0-dev"
 
 func main() {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

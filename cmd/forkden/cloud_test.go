@@ -42,15 +42,16 @@ func (m *memoryCredentials) Set(id string, credential account.Credential) error 
 func (m *memoryCredentials) Delete(id string) error { delete(m.values, id); return nil }
 
 type cliFixture struct {
-	server      *httptest.Server
-	app         cloudApp
-	dir, token  string
-	mu          sync.Mutex
-	devicePolls int
-	intervals   []time.Duration
-	intents     []cloud.JobInput
-	jobReads    int
-	revoked     bool
+	server       *httptest.Server
+	app          cloudApp
+	dir, token   string
+	mu           sync.Mutex
+	devicePolls  int
+	intervals    []time.Duration
+	intents      []cloud.JobInput
+	jobReads     int
+	readStatuses []string
+	revoked      bool
 }
 
 func newCLIFixture(t *testing.T) *cliFixture {
@@ -107,6 +108,10 @@ func newCLIFixture(t *testing.T) *cliFixture {
 			success([]cloud.Project{{ID: "prj_demo", OrgID: "org_demo", Name: "Commerce"}})
 		case strings.HasSuffix(r.URL.Path, "/profiles"):
 			success([]cloud.Profile{{ID: "prf_demo", OrgID: "org_demo", ProjectID: "prj_demo", Name: "Display", DatabaseType: "postgresql", ConnectorID: "con_demo"}})
+		case strings.HasSuffix(r.URL.Path, "/resources/res_demo/versions"):
+			success([]cloud.CloneVersion{{CloneID: "res_demo", Number: 1, JobID: "job_demo", Status: "ready", CreatedAt: time.Now().UTC()}})
+		case strings.HasSuffix(r.URL.Path, "/resources"):
+			success([]cloud.Resource{{ID: "res_demo", OrgID: "org_demo", ProjectID: "prj_demo", ConnectorID: "con_demo", Name: "Baseline", Kind: "clone", ProfileID: "prf_demo", Status: "ready", LatestVersion: 2, LastJobID: "job_demo", CreatedAt: time.Now().UTC(), UpdatedAt: time.Now().UTC()}})
 		case r.Method == "POST" && strings.HasSuffix(r.URL.Path, "/jobs"):
 			data, err := io.ReadAll(r.Body)
 			if err != nil {
@@ -130,7 +135,12 @@ func newCLIFixture(t *testing.T) *cliFixture {
 			success(job)
 		case strings.HasSuffix(r.URL.Path, "/jobs/job_demo"):
 			f.jobReads++
-			if f.jobReads == 1 {
+			if len(f.readStatuses) > 0 {
+				job.Status = f.readStatuses[min(f.jobReads-1, len(f.readStatuses)-1)]
+				if job.Status == "cancelled" {
+					job.FailureCode, job.CleanupState = "cancelled", "complete"
+				}
+			} else if f.jobReads == 1 {
 				job.Status = "running"
 				job.CleanupState = "unknown"
 			} else {

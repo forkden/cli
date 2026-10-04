@@ -314,26 +314,32 @@ func (app cloudApp) resource(ctx context.Context, client *cloud.Client, kind str
 		return nil, invalidInput("use cloud " + kind + " create NAME, list or show RESOURCE_ID")
 	}
 	if (args[0] == "list" && len(args) == 1) || (args[0] == "show" && len(args) == 2 && cloud.ValidID(args[1])) {
-		jobs, err := client.Jobs(ctx, cfg.OrgID, cfg.ProjectID)
+		resources, err := client.Resources(ctx, cfg.OrgID, cfg.ProjectID)
 		if err != nil {
 			return nil, err
 		}
-		items := []cloud.Job{}
-		for _, job := range jobs {
-			if job.Kind != kind+".create" {
+		items := []cloud.Resource{}
+		for _, resource := range resources {
+			if resource.Kind != kind {
 				continue
 			}
-			if args[0] == "show" && job.ResourceID == args[1] {
-				return job, nil
+			if args[0] == "show" && resource.ID == args[1] {
+				return resource, nil
 			}
 			if args[0] == "list" {
-				items = append(items, job)
+				items = append(items, resource)
 			}
 		}
 		if args[0] == "list" {
 			return items, nil
 		}
-		return nil, &cloud.Error{Code: "not_found", Message: "Resource creation job is not available in this project."}
+		return nil, &cloud.Error{Code: "not_found", Message: "Resource is not available in this project."}
+	}
+	if kind == "clone" && len(args) == 2 && args[0] == "versions" && cloud.ValidID(args[1]) {
+		return client.Versions(ctx, cfg.OrgID, cfg.ProjectID, args[1])
+	}
+	if (kind == "clone" && (args[0] == "refresh" || args[0] == "delete")) || (kind == "fork" && args[0] == "close") {
+		return app.lifecycle(ctx, client, kind, args, cfg, out, progress)
 	}
 	if args[0] != "create" || len(args) < 2 || args[1] == "" {
 		return nil, invalidInput("use cloud " + kind + " create NAME")
@@ -350,7 +356,7 @@ func (app cloudApp) resource(ctx context.Context, client *cloud.Client, kind str
 		profile = flags.String("profile", "", "platform profile ID")
 	} else {
 		clone = flags.String("clone", "", "ready clone's platform resource ID")
-		version = flags.Int("version", 1, "immutable snapshot version (currently 1)")
+		version = flags.Int("version", 1, "immutable ready snapshot version")
 		ttl = flags.Duration("ttl", time.Hour, "fork lifetime, whole seconds from 1m to 24h")
 	}
 	if err := parse(flags, args[2:], out); err != nil {
@@ -365,8 +371,8 @@ func (app cloudApp) resource(ctx context.Context, client *cloud.Client, kind str
 		}
 		input.ProfileID = *profile
 	} else {
-		if !cloud.ValidID(*clone) || *version != 1 || *ttl < time.Minute || *ttl > 24*time.Hour || *ttl%time.Second != 0 {
-			return nil, invalidInput("provide --clone RESOURCE_ID, --version 1 and a whole-second ttl between 1m and 24h")
+		if !cloud.ValidID(*clone) || (*version < 1 || *version > 10000) || *ttl < time.Minute || *ttl > 24*time.Hour || *ttl%time.Second != 0 {
+			return nil, invalidInput("provide --clone RESOURCE_ID, a ready --version and a whole-second ttl between 1m and 24h")
 		}
 		input.CloneID, input.CloneVersion, input.TTLSeconds = *clone, *version, int(*ttl/time.Second)
 	}
@@ -442,7 +448,7 @@ func (app cloudApp) waitJob(ctx context.Context, client *cloud.Client, cfg accou
 			}
 			return job, nil
 		}
-		if job.Status != "queued" && job.Status != "running" {
+		if job.Status != "queued" && job.Status != "running" && job.Status != "cancelling" {
 			return job, &cloud.Error{Code: "unavailable", Message: "Invalid job status returned by Forkden."}
 		}
 		if err := app.pause(pollCtx, 5*time.Second); err != nil {
@@ -466,14 +472,18 @@ const cloudUsage = `Forkden · account and copy jobs
   forkden cloud project current
   forkden cloud db list
   forkden cloud clone create NAME --profile PROFILE_ID [--wait]
-  forkden cloud fork create NAME --clone RESOURCE_ID [--version 1] [--ttl 1h] [--wait]
+  forkden cloud fork create NAME --clone RESOURCE_ID [--version N] [--ttl 1h] [--wait]
   forkden cloud clone list / show RESOURCE_ID
   forkden cloud fork list / show RESOURCE_ID
+  forkden cloud fork close RESOURCE_ID [--wait]
+  forkden cloud clone delete RESOURCE_ID [--wait]
+  forkden cloud clone refresh RESOURCE_ID [--wait]
+  forkden cloud clone versions RESOURCE_ID
   forkden cloud job list / status JOB_ID / wait JOB_ID / cancel JOB_ID
 
-Use --request_id on create to repeat the same intent safely. Polling uses --timeout
-(default 20m). Stopping polling does not cancel work. Cancel applies to queued jobs.
-Resource lists show creation jobs and their platform resource IDs. DB connections
+Use --request_id on create/close/delete/refresh to repeat the same intent safely. Polling uses --timeout
+(default 20m). Stopping polling does not cancel work. Running copy cancellation waits for worker cleanup; dispatched close/delete must finish.
+Resource lists show physical lifecycle; job list preserves operation history. DB connections
 and env/secret references stay on the assigned worker. Cloud query access is pending.
 Login uses browser consent and the OS keyring; plaintext token storage is unsupported.
 Global --json, --api_url and --config_dir precede commands. Local engine commands

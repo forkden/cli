@@ -2,7 +2,7 @@
 
 Open-source command-line client for Forkden accounts and private data-plane copy jobs. Licensed under Apache-2.0.
 
-**Working tree:** `0.3.0-dev` adds browser-approved account login/logout, workspace selection, metadata profiles, clone/fork creation jobs and status/wait/cancel commands. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. These changes are not released yet; the published `v0.2.0` is the local Unix-socket prototype. Hosted service deployment and private worker distribution remain pending.
+**Working tree:** `0.4.0-dev` adds browser-approved account login/logout, workspace selection, metadata profiles, clone/fork creation jobs and status/wait/cancel commands. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. These changes are not released yet; the published `v0.2.0` is the local Unix-socket prototype. Cloud lifecycle adds fork close, clone delete, immutable refresh/version selection and running copy cancellation. The private installation package is available separately; private release publication and hosted deployment remain pending.
 
 **Product direction:** one small Apache-2.0 CLI calls the account API for both **self-hosted** customer data planes and future **managed cloud** Forkden data planes. Private DB execution stays in the selected infrastructure. The `cloud` prefix explicitly uses the account API; existing local commands retain their Unix-socket development transport. [Deployment architecture](https://github.com/forkden/prd/blob/main/docs/08-deployment-architecture.md).
 

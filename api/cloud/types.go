@@ -79,10 +79,12 @@ type Job struct {
 	StartedAt         *time.Time `json:"started_at"`
 	FinishedAt        *time.Time `json:"finished_at"`
 	ResourceExpiresAt *time.Time `json:"resource_expires_at"`
+	CancelRequestedAt *time.Time `json:"cancel_requested_at"`
 }
 
 // JobInput requests a metadata-only copy intent; the worker owns all database I/O.
 type JobInput struct {
+	ResourceID     string `json:"resource_id,omitempty"`
 	Kind           string `json:"kind"`
 	Name           string `json:"name"`
 	ProfileID      string `json:"profile_id"`
@@ -90,6 +92,35 @@ type JobInput struct {
 	CloneVersion   int    `json:"clone_version"`
 	TTLSeconds     int    `json:"ttl_seconds"`
 	IdempotencyKey string `json:"idempotency_key"`
+}
+
+// Resource is the worker-confirmed lifecycle of a clone or fork, independent of job history.
+type Resource struct {
+	ID            string     `json:"id"`
+	OrgID         string     `json:"org_id"`
+	ProjectID     string     `json:"project_id"`
+	ConnectorID   string     `json:"connector_id"`
+	Kind          string     `json:"kind"`
+	Name          string     `json:"name"`
+	ProfileID     string     `json:"profile_id"`
+	CloneID       string     `json:"clone_id"`
+	CloneVersion  int        `json:"clone_version"`
+	LatestVersion int        `json:"latest_version"`
+	Status        string     `json:"status"`
+	LastJobID     string     `json:"last_job_id"`
+	CreatedAt     time.Time  `json:"created_at"`
+	UpdatedAt     time.Time  `json:"updated_at"`
+	ExpiresAt     *time.Time `json:"expires_at"`
+}
+
+// CloneVersion describes publication state; it never contains a connection or snapshot payload.
+type CloneVersion struct {
+	CloneID   string     `json:"clone_id"`
+	Number    int        `json:"number"`
+	JobID     string     `json:"job_id"`
+	Status    string     `json:"status"`
+	CreatedAt time.Time  `json:"created_at"`
+	ReadyAt   *time.Time `json:"ready_at"`
 }
 
 // Terminal reports whether polling should stop for this authoritative job state.

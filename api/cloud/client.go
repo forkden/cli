@@ -336,10 +336,10 @@ func validJob(j Job, orgID, projectID string) bool {
 	if !ValidID(j.ID) || !ValidID(j.ResourceID) || !ValidID(j.ConnectorID) || j.OrgID != orgID || j.ProjectID != projectID || j.CreatedAt.IsZero() {
 		return false
 	}
-	if j.Kind != "clone.create" && j.Kind != "fork.create" {
+	if j.Kind != "clone.create" && j.Kind != "fork.create" && j.Kind != "fork.close" && j.Kind != "clone.delete" && j.Kind != "clone.refresh" {
 		return false
 	}
-	if j.Status != "queued" && j.Status != "running" && !j.Terminal() {
+	if j.Status != "queued" && j.Status != "running" && j.Status != "cancelling" && !j.Terminal() {
 		return false
 	}
 	switch j.FailureCode {
