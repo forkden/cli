@@ -80,7 +80,25 @@ The engine owns SQL validation, permissions, TTL and audit. The CLI only reads t
 
 ## Output and failures
 
-Global flags precede commands. Default output is formatted JSON; `--json` returns a compact `{ok, data, error?}` envelope. `error` contains a stable `code` and a public `message`.
+In a terminal, results use readable summaries and aligned tables. Piped or redirected output remains formatted JSON. `--json` always returns one compact `{ok, data, error?}` envelope; `error` contains a stable `code` and a public `message`. Progress and login instructions go to stderr. Human-readable errors also go to stderr and include a relevant next step. Table lists show at most 20 records and selected columns; use JSON for all records and fields. No colors or terminal animations are emitted into scripts.
+
+Global flags work before or after the command. Conventional names such as `--api-url`, `--config-dir`, `--request-id`, `--url-env` and `--output-dir` are accepted alongside the original underscore spellings. Resource names and flags can appear in either order. Flag values, including SQL, are preserved verbatim; `--` ends option parsing for positional SQL.
+
+```sh
+forkden help cloud fork create
+forkden cloud session create FORK_RESOURCE_ID --ttl 5m
+forkden cloud query --file backfill.sql
+forkden cloud job list --format table  # force readable output even when redirected
+forkden cloud job list --json         # stable scripting envelope
+forkden --version
+```
+
+`forkden help COMMAND` and `COMMAND --help` work offline, without opening settings or the keyring. Bash and Zsh completion use the same command catalog and never contact the API:
+
+```sh
+source <(forkden completion zsh)   # after compinit, in ~/.zshrc
+# or: source <(forkden completion bash)
+```
 
 | Exit code | Meaning |
 |---|---|
@@ -88,6 +106,7 @@ Global flags precede commands. Default output is formatted JSON; `--json` return
 | 1 | Engine, connection, lifecycle or local file error |
 | 2 | Invalid input or unsupported protocol/action |
 | 3 | Evaluated SQL check returned false |
+| 130 | Command interrupted by Ctrl+C |
 
 An unavailable engine returns an actionable JSON error rather than silently falling back to local database access. The client does not automatically retry commands. A failed or interrupted response may follow a committed operation; inspect `history`/`fork list` before retrying a mutation. `engine_busy` means the command was rejected before execution.
 

@@ -13,11 +13,14 @@ import (
 
 // Config contains no account credential, database URL or secret reference.
 type Config struct {
-	APIURL       string `json:"api_url"`
-	CredentialID string `json:"credential_id"`
-	UserID       string `json:"user_id"`
-	OrgID        string `json:"org_id"`
-	ProjectID    string `json:"project_id"`
+	APIURL           string `json:"api_url"`
+	CredentialID     string `json:"credential_id"`
+	UserID           string `json:"user_id"`
+	OrgID            string `json:"org_id"`
+	ProjectID        string `json:"project_id"`
+	WorkSessionID    string `json:"work_session_id,omitempty"`
+	WorkResourceID   string `json:"work_resource_id,omitempty"`
+	WorkCredentialID string `json:"work_credential_id,omitempty"`
 }
 
 // Store confines settings and atomic writes to a private configuration directory.
@@ -111,6 +114,11 @@ func (s *Store) Save(cfg Config) (retErr error) {
 }
 
 func validate(cfg Config) error {
+	if cfg.WorkSessionID != "" || cfg.WorkResourceID != "" || cfg.WorkCredentialID != "" {
+		if !cloud.ValidWorkSessionID(cfg.WorkSessionID) || !cloud.ValidWorkSessionID(cfg.WorkCredentialID) || !cloud.ValidID(cfg.WorkResourceID) || cfg.CredentialID == "" || cfg.ProjectID == "" {
+			return errors.New("invalid CLI work session selection")
+		}
+	}
 	if cfg.APIURL == "" {
 		if cfg != (Config{}) {
 			return errors.New("CLI settings are missing their API origin")

@@ -1,4 +1,4 @@
-# Account and copy-job client
+# Account, copy jobs and fork work client
 
 This working-tree slice builds independently as `0.4.0-dev`. It is not a published release or a deployed hosted service. The published `v0.2.0` retains the local Unix-socket protocol.
 
@@ -25,9 +25,31 @@ Build the CLI with `make build`. Run the configured account backend with the bui
 ./bin/forkden logout
 ```
 
-Replace IDs with API output. A fork uses the succeeded clone job's **resource ID**, not its job ID. All published capture versions are immutable; choose any ready version with --version N. Fork TTL is 60–86400 whole seconds. `cloud clone list/show` and `cloud fork list/show` return resource lifecycle metadata; cloud job list retains operation history. An expiry timestamp does not prove physical cleanup. Local commands without `cloud` remain on the Unix transport; `--socket` is refused with cloud commands. Cloud close/delete, immutable refresh and running copy cancellation are implemented. Cloud query execution and managed provisioning are pending.
+Replace IDs with API output. A fork uses the succeeded clone job's **resource ID**, not its job ID. All published capture versions are immutable; choose any ready version with --version N. Fork TTL is 60–86400 whole seconds. `cloud clone list/show` and `cloud fork list/show` return resource lifecycle metadata; cloud job list retains operation history. An expiry timestamp does not prove physical cleanup. Local commands without `cloud` remain on the Unix transport; `--socket` is refused with cloud commands. Cloud SQL and controlled internal Managed Cloud provisioning are implemented in this working tree. Publication and production deployment remain separate work.
 
-Global flags precede commands. `--json` writes one compact `{ok,data,error?}` envelope to stdout; progress and the human-readable login code go to stderr. No account/device bearer is printed. `job status` reports valid failed/uncertain states with success; `job wait` returns nonzero when a job ends without success.
+## Work in a cloud fork
+
+Select a fork you created, using an owner/admin account. A short work session is bound to that fork and expires after at most ten minutes, or sooner at fork expiry. Account credentials cannot execute SQL directly.
+
+```sh
+./bin/forkden cloud session create --ttl 10m FORK_RESOURCE_ID
+./bin/forkden cloud session show
+./bin/forkden cloud schema
+./bin/forkden cloud query "UPDATE public.users SET country='TR' WHERE tenant_id=1 AND country IS NULL"
+./bin/forkden cloud check "SELECT count(*)=0 FROM public.users WHERE tenant_id=1 AND country IS NULL"
+./bin/forkden cloud history
+./bin/forkden cloud review
+./bin/forkden cloud export --output_dir ./new-private-export
+./bin/forkden cloud session revoke
+```
+
+One SELECT/INSERT/UPDATE/DELETE is permitted per query. Check requires a boolean SELECT. The result is bounded to 100 rows / 1 MiB. Result rows and review samples require an explicit `session create --allow_rows` choice; the shared cloud history always contains metadata only. Failed work returns a nonzero exit while preserving its transaction/check classifications. Unknown transactions require operator reconciliation before another mutation or export; a request ID is never a SQL retry key.
+
+Work tokens stay in a separate OS keyring entry; settings contain only session/resource/credential IDs. Replacing the selected session revokes the earlier one. Logout or project changes revoke it before clearing local state. Server membership, session, fork and worker permission are checked before execution, during execution and before delivery. An active revoke cancels work at the next bounded authorization check. The gateway carries SQL/results transiently without storing them in its metadata tables; the private worker journals execution in encrypted state and never replays ambiguous SQL after restart.
+
+Export creates a fresh private directory with `changes.sql` and `report.json`. SQL contains committed operations only; review explicitly states incomplete coverage. These files are sensitive local artifacts. For the private Codex MCP and portal connection flow, see the private worker's `docs/worker.md`; neither an account token nor a DB URL belongs in Codex configuration.
+
+Global flags work before or after commands. Kebab-case flags such as `--api-url`, `--request-id`, `--allow-rows` and `--output-dir` are accepted alongside underscore spellings. Resource names and flags can appear in either order. Terminal output uses readable summaries and tables; redirected output remains JSON. `--format table` or `--format json` selects explicitly. `--json` writes one compact `{ok,data,error?}` envelope to stdout; progress and the human-readable login code go to stderr. No account/device bearer is printed. `job status` reports valid failed/uncertain states with success; `job wait` returns nonzero when a job ends without success. Query/check accept a quoted SQL statement, `--sql SQL` or `--file FILE` (up to 64 KiB); provide exactly one input. Run `forkden help cloud query` for offline help.
 
 ## Login and credentials
 
@@ -47,6 +69,6 @@ The account bearer is accepted only for CLI session/logout, organization/project
 
 Create/close/delete/refresh print a generated safe request ID **before** the mutation. Reuse it with `--request_id` to repeat the identical intent after a lost response; the server returns the same job. Changed meaning conflicts. Mutations never retry automatically. `--wait` and `cloud job wait JOB_ID --timeout 20m` poll every five seconds, with a bounded timeout. Interrupting/timing out polling leaves work active. `cloud job cancel JOB_ID` stops queued work or requests cancellation of a running copy/capture. Cancelling is nonterminal until worker cleanup is confirmed; dispatched close/delete cannot be cancelled.
 
-The boundary consists of names, opaque org/project/profile/worker/resource IDs, clone version, TTL and authoritative lifecycle metadata. SQL, input values, rows, source/admin URLs, env names, private PostgreSQL identities and raw errors have no fields. Fixed prototype limits are server-enforced and are not paid entitlements. The private self-hosted package is built separately; managed provisioning, cloud SQL/history, release publication and production edge/distributed rate limits remain separate work.
+The account/copy boundary consists of names, opaque org/project/profile/worker/resource IDs, clone version, TTL and authoritative lifecycle metadata. Source/admin URLs, env names, private PostgreSQL identities and raw errors have no fields. SQL/results use the separate fork-session channel described above. Limits are server enforced and are not paid entitlements. Private self-hosted and controlled managed packages are built separately; release publication and production edge/distributed rate limits remain separate work.
 
 Physical removal derives provenance from the resource; the CLI cannot override target/profile/clone/version. A clone with unclosed or uncertain dependent forks cannot be deleted even after TTL. Refresh keeps existing forks pinned; failed/cancelled capture numbers are retained and never reused. Resource/version payloads contain no DB details.

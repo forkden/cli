@@ -18,13 +18,14 @@ import (
 )
 
 type cloudApp struct {
-	credentials account.Credentials
-	openBrowser func(context.Context, string) error
-	pause       func(context.Context, time.Duration) error
+	credentials     account.Credentials
+	workCredentials account.WorkCredentials
+	openBrowser     func(context.Context, string) error
+	pause           func(context.Context, time.Duration) error
 }
 
 func defaultCloudApp() cloudApp {
-	return cloudApp{credentials: account.Keyring{}, openBrowser: openBrowser, pause: pause}
+	return cloudApp{credentials: account.Keyring{}, workCredentials: account.WorkKeyring{}, openBrowser: openBrowser, pause: pause}
 }
 
 func pause(ctx context.Context, d time.Duration) error {
@@ -53,16 +54,19 @@ func openBrowser(ctx context.Context, uri string) error {
 }
 
 func (app cloudApp) run(ctx context.Context, args []string, origin, dir string, out, progress io.Writer) (value any, retErr error) {
-	if len(args) == 0 || args[0] == "help" || args[len(args)-1] == "--help" {
-		_, err := fmt.Fprint(out, cloudUsage)
-		return nil, errors.Join(flag.ErrHelp, err)
+	if len(args) == 0 || args[0] == "help" {
+		cmd, err := validateHelpPath(append([]string{"cloud"}, args[min(1, len(args)):]...))
+		if err != nil {
+			return nil, err
+		}
+		return nil, errors.Join(flag.ErrHelp, writeHelp(out, cmd))
 	}
 	store, err := account.Open(dir)
 	if err != nil {
 		return nil, err
 	}
 	defer func() { retErr = errors.Join(retErr, store.Close()) }()
-	write := args[0] == "login" || args[0] == "logout" || (len(args) > 1 && args[0] == "project" && args[1] == "use")
+	write := args[0] == "login" || args[0] == "logout" || (len(args) > 1 && args[0] == "project" && args[1] == "use") || args[0] == "session"
 	if write {
 		if err := store.Lock(); err != nil {
 			return nil, err
@@ -141,6 +145,10 @@ func (app cloudApp) run(ctx context.Context, args []string, origin, dir string, 
 			return nil, err
 		}
 		return app.job(ctx, client, args[1:], cfg, out, progress)
+	case "session":
+		return app.workSession(ctx, client, args[1:], cfg, store)
+	case "query", "check", "schema", "history", "review", "export":
+		return app.work(ctx, args[0], args[1:], cfg, out, progress)
 	default:
 		return nil, invalidInput("unknown cloud command; run forkden cloud help")
 	}
@@ -235,6 +243,9 @@ func (app cloudApp) saveGrant(ctx context.Context, origin string, grant cloud.Gr
 }
 
 func (app cloudApp) logout(ctx context.Context, client *cloud.Client, cfg account.Config, store *account.Store) (any, error) {
+	if err := app.clearWork(ctx, client, &cfg); err != nil {
+		return nil, err
+	}
 	err := client.Logout(ctx)
 	var publicErr *cloud.Error
 	if err != nil {
@@ -284,6 +295,11 @@ func (app cloudApp) project(ctx context.Context, client *cloud.Client, args []st
 	}
 	for _, p := range projects {
 		if p.ID == projectID && p.OrgID == *org {
+			if cfg.OrgID != *org || cfg.ProjectID != projectID {
+				if err := app.clearWork(ctx, client, &cfg); err != nil {
+					return nil, err
+				}
+			}
 			cfg.OrgID, cfg.ProjectID = *org, projectID
 			if err := store.Save(cfg); err != nil {
 				return nil, err
@@ -461,31 +477,3 @@ func (app cloudApp) waitJob(ctx context.Context, client *cloud.Client, cfg accou
 		job = updated
 	}
 }
-
-const cloudUsage = `Forkden · account and copy jobs
-
-  forkden --api_url ORIGIN login [--no-browser]
-  forkden whoami / logout
-  forkden cloud org list
-  forkden cloud project list --org ORG_ID
-  forkden cloud project use PROJECT_ID --org ORG_ID
-  forkden cloud project current
-  forkden cloud db list
-  forkden cloud clone create NAME --profile PROFILE_ID [--wait]
-  forkden cloud fork create NAME --clone RESOURCE_ID [--version N] [--ttl 1h] [--wait]
-  forkden cloud clone list / show RESOURCE_ID
-  forkden cloud fork list / show RESOURCE_ID
-  forkden cloud fork close RESOURCE_ID [--wait]
-  forkden cloud clone delete RESOURCE_ID [--wait]
-  forkden cloud clone refresh RESOURCE_ID [--wait]
-  forkden cloud clone versions RESOURCE_ID
-  forkden cloud job list / status JOB_ID / wait JOB_ID / cancel JOB_ID
-
-Use --request_id on create/close/delete/refresh to repeat the same intent safely. Polling uses --timeout
-(default 20m). Stopping polling does not cancel work. Running copy cancellation waits for worker cleanup; dispatched close/delete must finish.
-Resource lists show physical lifecycle; job list preserves operation history. DB connections
-and env/secret references stay on the assigned worker. Cloud query access is pending.
-Login uses browser consent and the OS keyring; plaintext token storage is unsupported.
-Global --json, --api_url and --config_dir precede commands. Local engine commands
-without the cloud prefix retain the Unix socket protocol.
-`
