@@ -1,0 +1,52 @@
+name: CLI release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: read
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      id-token: write
+      attestations: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Tag matches the source version
+        run: grep -qx "var version = \"${GITHUB_REF_NAME#v}\"" cmd/forkden/main.go
+      - name: Tests
+        run: |
+          go test -race ./...
+          go vet ./...
+      - name: Archives and checksums
+        run: |
+          version=${GITHUB_REF_NAME#v}
+          mkdir dist
+          for target in darwin/amd64 darwin/arm64 linux/amd64 linux/arm64; do
+            name="forkden_${version}_${target%/*}_${target#*/}"
+            mkdir "dist/$name"
+            CGO_ENABLED=0 GOOS=${target%/*} GOARCH=${target#*/} go build -trimpath -ldflags="-s -w" -o "dist/$name/forkden" ./cmd/forkden
+            cp LICENSE NOTICE README.md "dist/$name/"
+            tar -C dist -czf "dist/$name.tar.gz" "$name"
+            rm -rf "dist/$name"
+          done
+          (cd dist && shasum -a 256 *.tar.gz > SHA256SUMS)
+      - uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+        with:
+          subject-path: dist/*.tar.gz
+      - name: GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          prerelease=
+          case $GITHUB_REF_NAME in *-*) prerelease=--prerelease ;; esac
+          gh release create "$GITHUB_REF_NAME" --verify-tag --title "$GITHUB_REF_NAME" --generate-notes $prerelease dist/*.tar.gz dist/SHA256SUMS

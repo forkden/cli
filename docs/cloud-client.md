@@ -1,6 +1,6 @@
 # Account, copy jobs and fork work client
 
-This working-tree slice builds independently as `0.5.0-dev`. It is not a published release or a deployed hosted service. The published `v0.2.0` retains the local Unix-socket protocol.
+This slice is released as `v0.5.0`. It is not a deployed hosted service. The published `v0.2.0` retains the local Unix-socket protocol.
 
 ## Workflow
 

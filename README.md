@@ -2,7 +2,7 @@
 
 Open-source command-line client for Forkden accounts and private data-plane copy jobs. Licensed under Apache-2.0.
 
-**Working tree:** `0.5.0-dev` adds browser-approved account login/logout, workspace selection, metadata profiles, clone/fork creation jobs, status/wait/cancel commands and fork-bound work sessions (`cloud session/schema/query/check/history/review/export`) with readable terminal output. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. These changes are not released yet; the published `v0.2.0` is the local Unix-socket prototype. Cloud lifecycle adds fork close, clone delete, immutable refresh/version selection and running copy cancellation. The private installation package is available separately; private release publication and hosted deployment remain pending.
+**Release:** `v0.5.0` adds browser-approved account login/logout, workspace selection, metadata profiles, clone/fork creation jobs, status/wait/cancel commands and fork-bound work sessions (`cloud session/schema/query/check/history/review/export`) with readable terminal output. The CLI builds independently and contains no engine implementation, PostgreSQL driver, copy logic or account service. `v0.2.0` was the local Unix-socket prototype. Cloud lifecycle adds fork close, clone delete, immutable refresh/version selection and running copy cancellation. The private worker package and `forkden-mcp` ship as a separate signed private release; hosted deployment remains pending.
 
 **Product direction:** one small Apache-2.0 CLI calls the account API for both **self-hosted** customer data planes and future **managed cloud** Forkden data planes. Private DB execution stays in the selected infrastructure. The `cloud` prefix explicitly uses the account API; existing local commands retain their Unix-socket development transport. [Deployment architecture](https://github.com/forkden/prd/blob/main/docs/08-deployment-architecture.md).
 
@@ -12,15 +12,21 @@ Build this working tree with `make build` and use `./bin/forkden`. Start with `.
 
 ## Install or build
 
-Requires Go 1.26 or newer. The published local prototype can be installed with:
+Download `forkden_VERSION_OS_ARCH.tar.gz` for macOS or Linux (amd64/arm64) from [GitHub Releases](https://github.com/forkden/cli/releases), then check its checksum and build provenance:
 
 ```sh
-go install github.com/forkden/cli/cmd/forkden@v0.2.0
-forkden version
-forkden help
+shasum -a 256 --ignore-missing -c SHA256SUMS
+gh attestation verify forkden_0.5.0_darwin_arm64.tar.gz --repo forkden/cli
+tar -xzf forkden_0.5.0_darwin_arm64.tar.gz && ./forkden_0.5.0_darwin_arm64/forkden version
 ```
 
-Or clone this repository and run `make build`. Help and version work without an engine or database. No private repository access is needed to build, test or install the CLI.
+Or, with Go 1.26 or newer:
+
+```sh
+go install github.com/forkden/cli/cmd/forkden@v0.5.0
+```
+
+Or clone this repository and run `make build`. Help and version work without an engine or database. No private repository access is needed to build, test or install the CLI. [`forkden-private-release.pub`](forkden-private-release.pub) is the public key for verifying Forkden's private worker/MCP releases.
 
 ## Connect to an engine
 
