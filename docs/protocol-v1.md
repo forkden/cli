@@ -66,4 +66,4 @@ Limits: 256 KiB request, 16 MiB response, 90-second command deadline, two-minute
 
 ## Account and agent scope
 
-Socket access grants the local OS user access to this engine's registry; there is no per-account tenant authorization. A future backend and fork-bound MCP session need separate identity, ownership, revocation and entitlement checks. Client-side flags or an OSS license cannot enforce paid access. Do not expose this local handler as a hosted API.
+Socket access grants the local OS user access to this engine's registry; there is no per-account tenant authorization. The cloud backend and the fork-bound work session used by the private MCP server apply their own identity, ownership and revocation checks; paid entitlements are not implemented. Client-side flags or an OSS license cannot enforce paid access. Do not expose this local handler as a hosted API.
