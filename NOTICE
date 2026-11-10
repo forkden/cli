@@ -3,3 +3,14 @@ Copyright 2026 Forkden
 
 The CLI and public API contract are licensed under the Apache License, Version 2.0.
 The separate Forkden engine implementation is not part of this distribution.
+
+This product includes software under the following licenses:
+
+- github.com/jackc/pgx/v5 (MIT License, Copyright (c) 2013-2021 Jack Christensen)
+- github.com/jackc/pgpassfile (MIT License, Copyright (c) 2019 Jack Christensen)
+- github.com/jackc/pgservicefile (MIT License, Copyright (c) 2020 Jack Christensen)
+- golang.org/x/text (BSD 3-Clause License, Copyright 2009 The Go Authors)
+- github.com/zalando/go-keyring (MIT License, Copyright (c) 2016 Zalando SE)
+- github.com/godbus/dbus/v5 (BSD 2-Clause License, Copyright (c) 2013, Georg Reinke, Google)
+- github.com/danieljoos/wincred (MIT License, Copyright (c) 2014 Daniel Joos)
+- golang.org/x/sys (BSD 3-Clause License, Copyright 2009 The Go Authors)

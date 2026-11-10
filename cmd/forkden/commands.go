@@ -216,13 +216,13 @@ func statementInput(sql, file string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		data, readErr := io.ReadAll(io.LimitReader(input, (64<<10)+1))
+		data, readErr := io.ReadAll(io.LimitReader(input, v1.MaxStatementBytes+1))
 		if err := errors.Join(readErr, input.Close()); err != nil {
 			return "", err
 		}
 		sql = string(data)
 	}
-	if len(sql) == 0 || len(sql) > 64<<10 {
+	if len(sql) == 0 || len(sql) > v1.MaxStatementBytes {
 		return "", invalidInput("SQL must contain between 1 and 65536 bytes")
 	}
 	return sql, nil

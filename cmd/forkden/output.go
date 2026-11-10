@@ -307,7 +307,13 @@ func errorHint(code, command string) string {
 	case "engine_busy":
 		return "Wait for the current engine operation to finish, then try again."
 	case "check_failed":
-		return "The check returned false. Review its operation data and SQL before continuing."
+		return "A check did not pass. Review its result before continuing."
+	case "review_partial":
+		return "The report was written but is partial; its 'Not compared' section lists why."
+	case "source_unreachable", "target_unreachable":
+		return "Check the DSN, PGPASSWORD or ~/.pgpass, and that the server accepts connections."
+	case "tool_missing":
+		return "Install the PostgreSQL client tools matching the target server's major version and put them on PATH."
 	case "invalid_input":
 		if command == "" {
 			return "Run 'forkden help' for commands and examples."

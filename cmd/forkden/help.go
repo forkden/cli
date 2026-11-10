@@ -67,6 +67,13 @@ var commands = []commandHelp{
 		{path: "cloud review", summary: "Review row changes and checks", flags: workFlags},
 		{path: "cloud export", summary: "Write SQL and a report to a new local directory", usage: "--output-dir DIR", flags: "--output-dir DIR\tNew local directory; existing paths are preserved\n" + workFlags},
 	}},
+	{path: "review", summary: "Rehearse a data change on two local copies and review every row it changed", children: []commandHelp{
+		{path: "review fork", summary: "Copy a database into NAME_base (read-only) and NAME_work (for your agent)", usage: "NAME --dsn SOURCE [--to TARGET] [--force] [--template]", flags: "--dsn DSN\tSource database, PostgreSQL 12+; read through one snapshot, never written\n--to DSN\tServer for the two copies (default: the source server, which then needs CREATEDB)\n--force\tDrop this review's copies and its report directory first\n--template\tCopy with CREATE DATABASE TEMPLATE (same server, no other sessions on the source)\n" + reviewEnv, example: "forkden review fork demo --dsn \"postgres://app@db.internal/shop\" --to \"postgres://postgres@localhost:5432/postgres\""},
+		{path: "review diff", summary: "Compare NAME_work to NAME_base and write report.md, report.json and changes.sql", usage: "NAME [--to TARGET] | NAME --base DSN --work DSN", flags: "--to DSN\tServer holding the copies (default: the target file written by fork, then PG* variables)\n--base DSN\tCompare two databases you name instead (DSN mode)\n--work DSN\tThe changed database in DSN mode\n" + reviewEnv, example: "forkden review diff demo"},
+		{path: "review check", summary: "Run boolean SQL checks on NAME_work in one read-only snapshot", usage: "NAME --file FILE [--to TARGET | --work DSN]", flags: "--file FILE\tOne boolean query per block, blocks separated by a blank line, up to 64 KiB; '-- name: LABEL' names a block\n--to DSN\tServer holding the copies\n--work DSN\tCheck a database you name (DSN mode)\n" + reviewEnv, example: "forkden review check demo --file checks.sql"},
+		{path: "review export", summary: "Copy the latest complete report into a new directory", usage: "NAME --output DIR", flags: "--output DIR\tNew directory; existing paths are never written", example: "forkden review export demo --output ./demo-review"},
+		{path: "review drop", summary: "Drop NAME_base and NAME_work (only databases marked by fork)", usage: "NAME [--to TARGET]", flags: "--to DSN\tServer holding the copies (default: the target file written by fork)\n" + reviewEnv, example: "forkden review drop demo"},
+	}},
 	{path: "db", summary: "Manage local engine DB references", children: []commandHelp{
 		{path: "db add", summary: "Register an engine-side source reference", usage: "NAME [--url-env ENV]", flags: "--url-env ENV\tSource URL variable on the engine (default FORKDEN_SOURCE_URL)", example: "forkden db add sample --url-env FORKDEN_SOURCE_URL"},
 		{path: "db list", summary: "List registered profiles"},
@@ -105,6 +112,7 @@ const (
 	jobFlags      = "--request-id ID\tStable key for an explicit retry of the same intent\n--wait\tFollow worker-confirmed completion\n--timeout DURATION\tPolling limit, 1s–1h (default 20m); stopping does not cancel the job"
 	workFlags     = "--request-id ID\tExplicit request identity; execution is never automatically retried"
 	cloudSQLFlags = "--file FILE\tRead one SQL statement from a file (up to 64 KiB)\n--sql SQL\tPass a quoted statement; mutually exclusive with --file and positional SQL\n" + workFlags
+	reviewEnv     = "PGPASSWORD, PGHOST, PGPORT, PGUSER, PGDATABASE\tlibpq variables fill whatever a DSN leaves out; ~/.pgpass works too\nFORKDEN_REVIEW_DIR\tWhere reports go (default ./forkden-review)"
 	sqlFlags      = "--fork ID\tLocal engine fork ID\n--file FILE\tRead one SQL statement from a file (up to 64 KiB)\n--sql SQL\tPass one SQL statement; mutually exclusive with --file"
 )
 
@@ -174,6 +182,7 @@ func writeHelp(out io.Writer, cmd commandHelp) error {
 				names []string
 			}{
 				{title: "Account and workers", names: []string{"login", "whoami", "logout", "cloud"}},
+				{title: "Review", names: []string{"review"}},
 				{title: "Local engine", names: []string{"db", "clone", "fork", "query", "check", "diff", "history", "export", "engine"}},
 				{title: "Utilities", names: []string{"version", "completion"}},
 			} {
@@ -203,6 +212,9 @@ func writeHelp(out io.Writer, cmd commandHelp) error {
 	}
 	if cmd.path == "" || cmd.path == "cloud" {
 		text.WriteString("\nGet started:\n  forkden login --api-url https://app.tryforkden.com\n  forkden cloud org list\n  forkden cloud project list --org ORG_ID\n  forkden cloud project use PROJECT_ID --org ORG_ID\n")
+	}
+	if cmd.path == "" || cmd.path == "review" {
+		text.WriteString("\nGet started (review):\n  forkden review fork demo --dsn \"$SOURCE\" --to \"$TARGET\"\n  psql \"$WORK\" -c \"UPDATE ...\"   # or let your agent work on demo_work\n  forkden review diff demo          # writes ./forkden-review/demo/report.md\n  forkden review drop demo\n")
 	}
 	if cmd.path == "db" {
 		text.WriteString("\n'source' is an alias for 'db'. URL variables are resolved on the engine.\n")

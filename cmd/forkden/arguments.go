@@ -21,7 +21,7 @@ var valueFlags = map[string]bool{
 	"url_env": true, "target_env": true, "source": true, "clone": true,
 	"version": true, "ttl": true, "fork": true, "sql": true, "file": true,
 	"output": true, "profile": true, "timeout": true, "request_id": true,
-	"output_dir": true, "org": true,
+	"output_dir": true, "org": true, "dsn": true, "to": true, "base": true, "work": true,
 }
 
 func parseGlobalOptions(args []string) (globalOptions, []string, error) {
@@ -162,7 +162,8 @@ func leadingPositionals(path string) int {
 	case "db add", "db update", "db show", "db check", "db remove",
 		"clone create", "clone show", "clone refresh", "clone remove", "fork close",
 		"cloud project use", "cloud clone create", "cloud clone show", "cloud clone versions", "cloud clone refresh", "cloud clone delete",
-		"cloud fork create", "cloud fork show", "cloud fork close", "cloud job status", "cloud job wait", "cloud job cancel", "completion":
+		"cloud fork create", "cloud fork show", "cloud fork close", "cloud job status", "cloud job wait", "cloud job cancel", "completion",
+		"review fork", "review diff", "review check", "review export", "review drop":
 		return 1
 	default:
 		return 0

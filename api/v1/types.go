@@ -10,6 +10,8 @@ const (
 	MaxRequestBytes = 256 << 10
 	// MaxResponseBytes bounds a complete response, including review data.
 	MaxResponseBytes = 16 << 20
+	// MaxStatementBytes bounds a SQL file or statement read by the CLI (checks included).
+	MaxStatementBytes = 64 << 10
 )
 
 // Action names an engine operation; the engine owns all database behavior.

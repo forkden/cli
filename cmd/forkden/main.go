@@ -83,6 +83,16 @@ func runWithCloud(ctx context.Context, args []string, out, progress io.Writer, a
 		}
 		return output.finish(map[string]any{"version": version, "api_version": v1.Version, "os": runtime.GOOS, "arch": runtime.GOARCH}, nil)
 	}
+	if args[0] == "review" {
+		if opts.localOnly {
+			return output.finish(nil, invalidInput("--socket belongs to local engine commands; review connects to PostgreSQL directly"))
+		}
+		result, err := runReview(ctx, args[1:], out, progress)
+		if errors.Is(err, flag.ErrHelp) {
+			return err
+		}
+		return output.finish(result, err)
+	}
 	if args[0] == "cloud" || args[0] == "login" || args[0] == "logout" || args[0] == "whoami" {
 		cloudArgs := args
 		if args[0] == "cloud" {
@@ -152,10 +162,12 @@ func exitCode(err error) int {
 	var publicErr *v1.Error
 	if errors.As(err, &publicErr) {
 		switch publicErr.Code {
-		case "invalid_input", "unsupported_action", "unsupported_version":
+		case "invalid_input", "unsupported_action", "unsupported_version", "unsupported_source":
 			return 2
 		case "check_failed":
 			return 3
+		case "review_partial":
+			return 4
 		}
 	}
 	var cloudErr *cloud.Error

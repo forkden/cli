@@ -30,3 +30,36 @@ jobs:
       - uses: golangci/golangci-lint-action@db9de0fc1a667e1a49d2291a1a042dff081d78f6 # v9
         with:
           version: v2.12.2
+
+  # forkden review against a real server: postgres:16 with the runner's stock PostgreSQL 16
+  # client tools (client major = target major). The first step fails loudly if the image changes.
+  verify-db:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 2s
+          --health-timeout 5s
+          --health-retries 30
+    steps:
+      - name: Client tools are PostgreSQL 16
+        run: |
+          pg_dump --version
+          pg_dump --version | grep -q '(PostgreSQL) 16\.'
+          pg_restore --version | grep -q '(PostgreSQL) 16\.'
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6
+        with:
+          go-version-file: go.mod
+          cache: true
+      - name: Review database tests
+        env:
+          FORKDEN_REVIEW_TEST_DSN: postgres://postgres:postgres@localhost:5433/postgres?sslmode=disable
+        run: go test -race -count=1 -v ./internal/review/
